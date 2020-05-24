@@ -1,110 +1,123 @@
 import React, { Component } from 'react';
-import { StyleSheet, Text, View, Button } from 'react-native';
+import { StyleSheet, Text, View, Button, FlatList, TouchableHighlight } from 'react-native';
 import { BleManager, Device } from 'react-native-ble-plx';
 
 type BluetoothProps = {
 
-  }
+}
 
-const vertigoDataServiceId:string = "d7a7fc0a-b32e-4bda-933f-49cbd9cfe2dc";
-const vertigoHardwareServiceId:string = "0000180a-0000-1000-8000-00805f9b34fb";
+const vertigoDataServiceId: string = "d7a7fc0a-b32e-4bda-933f-49cbd9cfe2dc";
+const vertigoHardwareServiceId: string = "0000180a-0000-1000-8000-00805f9b34fb";
 
 export default class BtControls extends Component<BluetoothProps> {
 
-    manager:BleManager;
+    manager: BleManager;
+    devices: Device[] = [];
     state = {
-        logging:false,
-        bluetoothReady:false,
-        manager:null,
-        deviceFound:""
+        scanning: false,
+        bluetoothReady: false,
+        manager: null,
+        devices: this.devices
     };
 
-    constructor(props: BluetoothProps){
+    constructor(props: BluetoothProps) {
         super(props);
         this.manager = new BleManager();
     }
 
-    
 
-    private startLogging(){
-        this.setState({
-            "logging":true
-        });
+
+    private toggleLogging() {
+        if (this.state.scanning) {
+            this.manager.stopDeviceScan();
+            this.setState({
+                scanning: false
+            });
+        } else {
+            this.scan();
+        }
     }
 
     componentWillMount() {
-        const subscription = this.manager.onStateChange((state) => {
+        this.manager.onStateChange((state) => {
             if (state === 'PoweredOn') {
-                this.scanAndConnect();
                 this.setState({
-                    bluetoothReady:true
+                    bluetoothReady: true
                 })
-                subscription.remove();
+            } else {
+                this.setState({
+                    bluetoothReady: false
+                });
             }
         }, true);
     }
 
-    scanAndConnect() {
+    scan() {
+        this.setState({
+            scanning: true,
+            devices: []
+        })
         this.manager.startDeviceScan(null, null, (error, device) => {
             if (error) {
-                // Handle error (scanning will be stopped automatically)
+                // Handle error (scanning will be stopped automatically
+                console.error(error.message);
                 return
             }
-            if (device) console.debug("Name:"+device.name);
-            if (device) device.serviceUUIDs?.forEach(u=>console.debug("UUID:"+u));
-            // Check if it is a device you are looking for based on advertisement data
-            // or other criteria.
-            if (device && device.serviceUUIDs?.some(s=>s==vertigoDataServiceId)) {
-                console.debug("Found");
-                this.setState({
-                    deviceFound:device.name
-                })
-                // Stop scanning as it's not necessary if you are scanning for one device.
-                this.manager.stopDeviceScan();
-    
-                // Proceed with connection.
-                this.connect(device);
+            if (device) {
+                if (!this.state.devices.some(d => d.id === device.id)) {
+                    this.setState({ devices: this.state.devices.concat([device]) });
+                }
             }
         });
     }
 
-    connect(device:Device){
+    connect(device: Device) {
         device.connect()
-        .then((device) => {
-            return device.discoverAllServicesAndCharacteristics()
-        })
-        .then((device) => {
-           // Do work on device with services and characteristics
-        })
-        .catch((error) => {
-            // Handle errors
-        });
+            .then((device) => {
+                return device.discoverAllServicesAndCharacteristics()
+            })
+            .then((device) => {
+                // Do work on device with services and characteristics
+            })
+            .catch((error) => {
+                // Handle errors
+            });
     }
 
-    render(){
-        const name = this.state.logging?"Hello, I am logging":"Hello, I am not logging";
-        
+    private getLoggingStatus(): string {
+        if (!this.state.bluetoothReady) return "Bluetooth disabled";
+        if (this.state.scanning) return "Scanning";
+        return "Scan";
+    }
+
+    render() {
         return (
-            <View style={styles.container}>
-                <Button title={name} onPress={this.startLogging.bind(this)}></Button>
+            <View>
+                <Button title={this.getLoggingStatus()} disabled={!this.state.bluetoothReady} onPress={this.toggleLogging.bind(this)}></Button>
+                <FlatList
+                    data={this.state.devices}
+                    renderItem={({ item }) => <TouchableHighlight onPress={(e) => this.connect(item)} key={item.id}>
+                        <View>
+                            <View>
+                                <Text >{item.name}</Text>
+                                <Text >{item.id}</Text>
+                            </View>
+                        </View>
+
+                    </TouchableHighlight>
+                    }
+                />
             </View>
-    
+
         );
     }
 
-    componentWillUnmount(){
+    componentWillUnmount() {
         this.manager.destroy();
     }
-    
+
+
+
 }
 
-const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: '#fff',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-  });
 
-  
