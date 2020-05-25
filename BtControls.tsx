@@ -158,12 +158,12 @@ export default class BtControls extends Component<BluetoothProps> {
         this.manager.destroy();
     }
 
-    public connect() {
+    public async connect() {
         if (this.state.selectedDevice){
             this.manager.destroy();
             this.manager = new BleManager();
             console.debug("Connecting");
-            this.selectedDevice?.connect()
+            await this.state.selectedDevice?.connect()
                 .then((device) => {
                     console.debug("Connected");
                     return device.discoverAllServicesAndCharacteristics()
@@ -179,32 +179,32 @@ export default class BtControls extends Component<BluetoothProps> {
         
     }
 
-    public startLogging() {
+    public async startLogging() {
         this.setState({
             logging: true
         });
-        if (this.state.selectedDevice?.isConnected()) {
+        if (await this.state.selectedDevice?.isConnected()) {
             console.debug("Is connected Connected");
             //this.manager.writeCharacteristicWithoutResponseForDevice(this.state.selectedDevice.id,vertigoDataServiceId,controlCharacteristicID,"AQ==").catch(error=>console.error(error));
-            this.state.selectedDevice?.writeCharacteristicWithoutResponseForService(vertigoDataServiceId,controlCharacteristicID,"AQ==").catch(error=>console.error(error));
+            await this.state.selectedDevice?.writeCharacteristicWithResponseForService(vertigoDataServiceId,controlCharacteristicID,"AQ==").catch(error=>console.error(error));
         } else {
             console.error("Not connected");
         }
     }
 
 
-    public stopLogging() {
+    public async stopLogging() {
         this.setState({
             logging: false
         });
-        if (this.state.selectedDevice?.isConnected()) {
-            this.state.selectedDevice?.writeCharacteristicWithoutResponseForService(vertigoDataServiceId,controlCharacteristicID,"Ag==").catch(error=>console.error(error));
+        if (await this.state.selectedDevice?.isConnected()) {
+            await this.state.selectedDevice?.writeCharacteristicWithResponseForService(vertigoDataServiceId,controlCharacteristicID,"Ag==").catch(error=>console.error(error));
         }
     }
 
-    public calibrate() {
-        if (this.state.selectedDevice?.isConnected()) {
-            this.state.selectedDevice?.writeCharacteristicWithoutResponseForService(vertigoDataServiceId,controlCharacteristicID,"CA==").catch(error=>console.error(error));
+    public async calibrate() {
+        if (await this.state.selectedDevice?.isConnected()) {
+            await this.state.selectedDevice?.writeCharacteristicWithResponseForService(vertigoDataServiceId,controlCharacteristicID,"CA==").catch(error=>console.error(error));
         }
     }
 
